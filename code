@@ -1,0 +1,263 @@
+#include <iostream>
+#include <string>
+#include <queue>
+#include <stack>
+#include <vector>
+
+using namespace std;
+
+// Structure to represent a Car
+struct Car {
+    string model;
+    double pricePerDay;
+    bool isAvailable;
+};
+
+// Structure to represent a Customer
+struct Customer {
+    string name;
+    string id;
+    int bookingCount;
+    double wallet;
+};
+
+// Structure to represent a Booking
+struct Booking {
+    int customerIndex;  // Index of the customer in the customers array
+    int carIndex;       // Index of the car in the cars array
+    int days;
+    double totalCost;
+};
+
+// Global variables for storing data
+Car cars[10];               // Array of cars
+vector<Customer> customers; // Vector of customers
+queue<Booking> bookingQueue; // Queue to store bookings
+stack<Booking> returnStack;  // Stack to store returned bookings
+int carCount = 0;
+int customerCount = 0; // Initialize customer count
+int bookingCount = 0;
+
+// Function prototypes
+void addCar(string model, double price);
+void addCustomer();
+void bookCar(string customerName, string carModel, int days);
+void returnCar();
+void displayCars();
+void displayCustomers();
+double calculateTotalCost(int customerIndex, int carIndex, int days);
+int findCustomerByName(string name);
+int findCarByModel(string model);
+
+int main() {
+    int choice;
+
+    // Adding 5 default cars
+    addCar("Toyota", 50);
+    addCar("Honda", 60);
+    addCar("Ford", 80);
+    addCar("Chevrolet", 70);
+    addCar("BMW", 100);
+
+    do {
+        cout << "\nRental Car Management System" << endl;
+        cout << "............................................................" << endl;
+        cout << "1. Add Customer" << endl;
+        cout << "2. Display Cars" << endl;
+        cout << "3. Display Customers" << endl;
+        cout << "4. Book Car" << endl;
+        cout << "5. Return Car" << endl;
+        cout << "6. Exit" << endl;
+        cout << "Enter your choice: ";
+        cin >> choice;
+
+        cout << "............................................................" << endl;
+
+        switch (choice) {
+            case 1:
+                addCustomer();
+                break;
+            case 2:
+                displayCars();
+                break;
+            case 3:
+                displayCustomers();
+                break;
+            case 4: {
+                string customerName, carModel;
+                int days;
+                cout << "Enter customer name: ";
+                cin.ignore(); // To clear the input buffer
+                getline(cin, customerName); // Allow multi-word names
+                cout << "Enter car model: ";
+                getline(cin, carModel); // Allow multi-word car models
+                cout << "Enter number of days: ";
+                cin >> days;
+                bookCar(customerName, carModel, days);
+                break;
+            }
+            case 5:
+                returnCar();
+                break;
+            case 6:
+                cout << "Exiting the system." << endl;
+                break;
+            default:
+                cout << "Invalid choice! Please try again." << endl;
+        }
+
+        cout << "............................................................" << endl;
+
+    } while (choice != 6);
+
+    return 0;
+}
+
+// Function to add a car to the system
+void addCar(string model, double price) {
+    cars[carCount].model = model;
+    cars[carCount].pricePerDay = price;
+    cars[carCount].isAvailable = true;
+    carCount++;
+}
+
+// Function to add a customer by getting input from the user
+void addCustomer() {
+    string name, id;
+    double wallet;
+
+    cout << "Enter customer name: ";
+    cin.ignore(); // Clear the input buffer before taking string input
+    getline(cin, name); // To allow for multi-word names
+
+    cout << "Enter customer ID: ";
+    cin >> id;
+
+    cout << "Enter wallet balance: ";
+    cin >> wallet;
+
+    Customer newCustomer = {name, id, 0, wallet};
+    customers.push_back(newCustomer); // Add customer to the vector
+    customerCount++; // Update customer count
+    cout << "Customer added successfully!" << endl;
+}
+
+// Function to convert a string to lowercase
+string toLowerCase(string str) {
+    for (char &c : str) {
+        c = tolower(c);
+    }
+    return str;
+}
+
+// Function to find a customer by name (case-insensitive)
+int findCustomerByName(string name) {
+    string lowerName = toLowerCase(name); // Convert input to lowercase
+    for (int i = 0; i < customerCount; i++) {
+        if (toLowerCase(customers[i].name) == lowerName) { // Compare with lowercase customer name
+            return i; // Return the index of the customer
+        }
+    }
+    return -1;  // Return -1 if customer is not found
+}
+
+// Function to find a car by model (case-insensitive)
+int findCarByModel(string model) {
+    string lowerModel = toLowerCase(model);
+    for (int i = 0; i < carCount; i++) {
+        if (toLowerCase(cars[i].model) == lowerModel && cars[i].isAvailable) {
+            return i; // Return the index of the car
+        }
+    }
+    return -1; // Return -1 if car is not found
+}
+
+// Function to calculate total cost for booking
+double calculateTotalCost(int customerIndex, int carIndex, int days) {
+    double discount = (customers[customerIndex].bookingCount >= 10) ? 0.1 : 0.0; // 10% discount if 10 or more bookings
+    double totalCost = cars[carIndex].pricePerDay * days * (1 - discount);
+    return totalCost;
+}
+
+// Function to book a car for a customer
+void bookCar(string customerName, string carModel, int days) {
+    int customerIndex = findCustomerByName(customerName);
+    if (customerIndex == -1) {
+        cout << "Customer not found!" << endl;
+        return;
+    }
+
+    int carIndex = findCarByModel(carModel);
+    if (carIndex == -1) {
+        cout << "Car not available or model not found!" << endl;
+        return;
+    }
+
+    // Calculate the total cost
+    double totalCost = calculateTotalCost(customerIndex, carIndex, days);
+
+    // Check if the customer has enough wallet balance
+    if (customers[customerIndex].wallet < totalCost) {
+        cout << "Insufficient funds! Booking cannot be processed." << endl;
+        return;
+    }
+
+    // Deduct the total cost from the customer's wallet
+    customers[customerIndex].wallet -= totalCost;
+
+    // Update the car's availability
+    cars[carIndex].isAvailable = false;
+
+    // Create a booking and add it to the booking queue
+    Booking booking = {customerIndex, carIndex, days, totalCost};
+    bookingQueue.push(booking);
+
+    // Increment the customer's booking count
+    customers[customerIndex].bookingCount++;
+
+    cout << "Car booked successfully!" << endl;
+    cout << "Total cost: $" << totalCost << endl;
+    cout << "Remaining wallet balance: $" << customers[customerIndex].wallet << endl;
+}
+
+// Function to return a car
+void returnCar() {
+    if (bookingQueue.empty()) {
+        cout << "No bookings to return!" << endl;
+        return;
+    }
+
+    // Process the car return using Stack (LIFO)
+    Booking booking = bookingQueue.front();
+    bookingQueue.pop();
+    cars[booking.carIndex].isAvailable = true;
+    returnStack.push(booking);
+
+    cout << "Car returned successfully!" << endl;
+}
+
+// Function to display available cars
+void displayCars() {
+    cout << "Available Cars:" << endl;
+    cout << "............................................................" << endl;
+    for (int i = 0; i < carCount; i++) {
+        cout << "Model: " << cars[i].model << ", Price per day: $" << cars[i].pricePerDay
+             << ", Available: " << (cars[i].isAvailable ? "Yes" : "No") << endl;
+    }
+    cout << "............................................................" << endl;
+}
+
+// Function to display all customers
+void displayCustomers() {
+    cout << "Customers:" << endl;
+    cout << "............................................................" << endl;
+    if (customerCount == 0) {
+        cout << "No customers to display." << endl;
+    } else {
+        for (int i = 0; i < customerCount; i++) {
+            cout << "Name: " << customers[i].name << ", ID: " << customers[i].id
+                 << ", Wallet: $" << customers[i].wallet << ", Bookings: " << customers[i].bookingCount << endl;
+        }
+    }
+    cout << "............................................................" << endl;
+}
